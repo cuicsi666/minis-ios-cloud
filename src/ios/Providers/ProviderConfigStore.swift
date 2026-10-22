@@ -3281,6 +3281,29 @@ final class ProviderConfigStore: ObservableObject {
         return ok
     }
 
+
+
+    // MARK: - 云通道（cuicsi 定制）
+
+    /// 首次启动时自动注入「云通道 · 上海云」提供商：模型密钥留在云端服务器，
+    /// 手机只持有云令牌。幂等：已存在同名前缀实例即跳过；若被同步/迁移覆盖会自动补回（最多 3 次）。
+    func ensureCloudChannelInjected() {
+        guard loadDegradation == .none else { return }
+        if config.instances.contains(where: { $0.label.hasPrefix("云通道") }) { return }
+        let defaultsKey = "cuicsi.cloudChannel.injectCount"
+        let count = UserDefaults.standard.integer(forKey: defaultsKey)
+        guard count < 3 else { return }
+        if let label = importInstanceJSON(Self.cloudChannelJSON) {
+            UserDefaults.standard.set(count + 1, forKey: defaultsKey)
+            logger.info("[CloudChannel] 已注入云端提供商：\(label)")
+        } else {
+            logger.error("[CloudChannel] 注入失败：JSON 无法解析")
+        }
+    }
+
+    static let cloudChannelJSON = #"""
+    {"providerType":"openAI","label":"云通道 · 上海云","credentialType":"apiKey","apiKey":"__CLOUD_TOKEN_B64__","customBaseURL":"https://cuicsi.cn/minis","appendV1Suffix":true,"models":[{"modelId":"DeepSeek-V4-Flash-0731","displayName":"DeepSeek-V4-Flash-0731（云·默认）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"DeepSeek-V4-Pro","displayName":"DeepSeek-V4-Pro（云·强推理）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"DeepSeek-V4.1-Flash","displayName":"DeepSeek-V4.1-Flash（云·新快版）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"GLM-5.3","displayName":"GLM-5.3（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"Kimi-K3","displayName":"Kimi-K3（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"Qwen3.8-Max","displayName":"Qwen3.8-Max（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"MiniMax-M3.1-Flash","displayName":"MiniMax-M3.1-Flash（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"MiMo-V2.6 Pro","displayName":"MiMo-V2.6 Pro（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"Doubao-Seed-2.1-Pro","displayName":"Doubao-Seed-2.1-Pro（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"}]}
+    """#
 }
 
 // MARK: - Model Refresh Error
@@ -3699,26 +3722,4 @@ enum ProviderKeychainHelper {
         let s2 = SecItemDelete(syncQuery as CFDictionary)
         AppLogger(category: "Keychain").info("delete oauthString instanceId=\(instanceId.prefix(8)) acct=\(account) legacyStatus=\(s1) syncStatus=\(s2) caller=\(caller)")
         notifyAuthChanged(instanceId: instanceId)
-    }
-    // MARK: - 云通道（cuicsi 定制）
-
-    /// 首次启动时自动注入「云通道 · 上海云」提供商：模型密钥留在云端服务器，
-    /// 手机只持有云令牌。幂等：已存在同名前缀实例即跳过；若被同步/迁移覆盖会自动补回（最多 3 次）。
-    func ensureCloudChannelInjected() {
-        guard loadDegradation == .none else { return }
-        if config.instances.contains(where: { $0.label.hasPrefix("云通道") }) { return }
-        let defaultsKey = "cuicsi.cloudChannel.injectCount"
-        let count = UserDefaults.standard.integer(forKey: defaultsKey)
-        guard count < 3 else { return }
-        if let label = importInstanceJSON(Self.cloudChannelJSON) {
-            UserDefaults.standard.set(count + 1, forKey: defaultsKey)
-            logger.info("[CloudChannel] 已注入云端提供商：\(label)")
-        } else {
-            logger.error("[CloudChannel] 注入失败：JSON 无法解析")
-        }
-    }
-
-    static let cloudChannelJSON = #"""
-    {"providerType":"openAI","label":"云通道 · 上海云","credentialType":"apiKey","apiKey":"__CLOUD_TOKEN_B64__","customBaseURL":"https://cuicsi.cn/minis","appendV1Suffix":true,"models":[{"modelId":"DeepSeek-V4-Flash-0731","displayName":"DeepSeek-V4-Flash-0731（云·默认）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"DeepSeek-V4-Pro","displayName":"DeepSeek-V4-Pro（云·强推理）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"DeepSeek-V4.1-Flash","displayName":"DeepSeek-V4.1-Flash（云·新快版）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"GLM-5.3","displayName":"GLM-5.3（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"Kimi-K3","displayName":"Kimi-K3（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"Qwen3.8-Max","displayName":"Qwen3.8-Max（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"MiniMax-M3.1-Flash","displayName":"MiniMax-M3.1-Flash（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"MiMo-V2.6 Pro","displayName":"MiMo-V2.6 Pro（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"},{"modelId":"Doubao-Seed-2.1-Pro","displayName":"Doubao-Seed-2.1-Pro（云）","isCustom":true,"isHidden":false,"supportsReasoning":true,"interleavedReasoningField":"reasoning_content"}]}
-    """#
-}
+    }}
