@@ -358,6 +358,8 @@ final class ProviderConfigStore: ObservableObject {
                         Task { await ChatStore.shared.markDirty(recordType: "ProviderModelEntryV3", recordId: eid, operation: "delete") }
                     }
                 }
+        // [cuicsi-cloud-channel] DB 权威加载后再兜一次，防止被覆盖
+        ensureCloudChannelInjected()
     }
 
     /// [T-new-session-hang-credential-cache] L2 invalidation hook #3: iCloud
@@ -3698,4 +3700,106 @@ enum ProviderKeychainHelper {
         AppLogger(category: "Keychain").info("delete oauthString instanceId=\(instanceId.prefix(8)) acct=\(account) legacyStatus=\(s1) syncStatus=\(s2) caller=\(caller)")
         notifyAuthChanged(instanceId: instanceId)
     }
+    // MARK: - 云通道（cuicsi 定制）
+
+    /// 首次启动时自动注入「云通道 · 上海云」提供商：模型密钥留在云端服务器，
+    /// 手机只持有云令牌。幂等：已存在同名前缀实例即跳过；若被同步/迁移覆盖会自动补回（最多 3 次）。
+    func ensureCloudChannelInjected() {
+        guard loadDegradation == .none else { return }
+        if config.instances.contains(where: { $0.label.hasPrefix("云通道") }) { return }
+        let defaultsKey = "cuicsi.cloudChannel.injectCount"
+        let count = UserDefaults.standard.integer(forKey: defaultsKey)
+        guard count < 3 else { return }
+        if let label = importInstanceJSON(Self.cloudChannelJSON) {
+            UserDefaults.standard.set(count + 1, forKey: defaultsKey)
+            logger.info("[CloudChannel] 已注入云端提供商：\(label)")
+        } else {
+            logger.error("[CloudChannel] 注入失败：JSON 无法解析")
+        }
+    }
+
+    static let cloudChannelJSON = #"""
+{
+  "apiKey": "__CLOUD_TOKEN_B64__",
+  "appendV1Suffix": true,
+  "credentialType": "apiKey",
+  "customBaseURL": "https://cuicsi.cn/minis",
+  "label": "云通道 · 上海云",
+  "models": [
+    {
+      "displayName": "DeepSeek-V4-Flash-0731（云·默认）",
+      "interleavedReasoningField": "reasoning_content",
+      "isCustom": true,
+      "isHidden": false,
+      "modelId": "DeepSeek-V4-Flash-0731",
+      "supportsReasoning": true
+    },
+    {
+      "displayName": "DeepSeek-V4-Pro（云·强推理）",
+      "interleavedReasoningField": "reasoning_content",
+      "isCustom": true,
+      "isHidden": false,
+      "modelId": "DeepSeek-V4-Pro",
+      "supportsReasoning": true
+    },
+    {
+      "displayName": "DeepSeek-V4.1-Flash（云·新快版）",
+      "interleavedReasoningField": "reasoning_content",
+      "isCustom": true,
+      "isHidden": false,
+      "modelId": "DeepSeek-V4.1-Flash",
+      "supportsReasoning": true
+    },
+    {
+      "displayName": "GLM-5.3（云）",
+      "interleavedReasoningField": "reasoning_content",
+      "isCustom": true,
+      "isHidden": false,
+      "modelId": "GLM-5.3",
+      "supportsReasoning": true
+    },
+    {
+      "displayName": "Kimi-K3（云）",
+      "interleavedReasoningField": "reasoning_content",
+      "isCustom": true,
+      "isHidden": false,
+      "modelId": "Kimi-K3",
+      "supportsReasoning": true
+    },
+    {
+      "displayName": "Qwen3.8-Max（云）",
+      "interleavedReasoningField": "reasoning_content",
+      "isCustom": true,
+      "isHidden": false,
+      "modelId": "Qwen3.8-Max",
+      "supportsReasoning": true
+    },
+    {
+      "displayName": "MiniMax-M3.1-Flash（云）",
+      "interleavedReasoningField": "reasoning_content",
+      "isCustom": true,
+      "isHidden": false,
+      "modelId": "MiniMax-M3.1-Flash",
+      "supportsReasoning": true
+    },
+    {
+      "displayName": "MiMo-V2.6 Pro（云）",
+      "interleavedReasoningField": "reasoning_content",
+      "isCustom": true,
+      "isHidden": false,
+      "modelId": "MiMo-V2.6 Pro",
+      "supportsReasoning": true
+    },
+    {
+      "displayName": "Doubao-Seed-2.1-Pro（云）",
+      "interleavedReasoningField": "reasoning_content",
+      "isCustom": true,
+      "isHidden": false,
+      "modelId": "Doubao-Seed-2.1-Pro",
+      "supportsReasoning": true
+    }
+  ],
+  "providerType": "openAI"
+}
+    """#
 }

@@ -197,6 +197,11 @@ struct MinisApp: App {
         }
     }
 
+        // [cuicsi-cloud-channel] 启动后自动注入云通道提供商
+        DispatchQueue.main.async {
+            ProviderConfigStore.shared.ensureCloudChannelInjected()
+        }
+
     /// [T-ios-reboot-keychain-identity-rotation] The sync bootstrap, factored out
     /// so the launch path and the protected-data-available retry call exactly the
     /// same thing. Both engines self-guard against double-start.
