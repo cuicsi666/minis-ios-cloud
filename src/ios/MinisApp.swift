@@ -198,7 +198,7 @@ struct MinisApp: App {
     }
 
         // [cuicsi-cloud-channel] 启动后自动注入云通道提供商
-        DispatchQueue.main.async {
+        Task { @MainActor in
             ProviderConfigStore.shared.ensureCloudChannelInjected()
         }
 
