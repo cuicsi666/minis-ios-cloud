@@ -110,6 +110,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             build 2>&1 | tee /tmp/xcbuild.log | tail -200 || true
           set +x
+          grep -q "BUILD SUCCEEDED" /tmp/xcbuild.log || { echo "===== 编译失败，错误行 ====="; grep -n " error:" /tmp/xcbuild.log | head -40; exit 1; }
           test -d build/Build/Products/Release-iphoneos || { echo "===== 构建失败，完整日志尾部 ====="; tail -500 /tmp/xcbuild.log; echo "===== 错误行 ====="; grep -n "error:" /tmp/xcbuild.log | head -40; exit 1; }
 
       - name: Package IPA

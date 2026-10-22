@@ -195,12 +195,12 @@ struct MinisApp: App {
             await ChatStore.shared.runDeferredMigrations()
             await ChatStore.shared.sweepZombieChildSessions()
         }
-    }
 
         // [cuicsi-cloud-channel] 启动后自动注入云通道提供商
         Task { @MainActor in
             ProviderConfigStore.shared.ensureCloudChannelInjected()
         }
+    }
 
     /// [T-ios-reboot-keychain-identity-rotation] The sync bootstrap, factored out
     /// so the launch path and the protected-data-available retry call exactly the
