@@ -115,15 +115,27 @@ jobs:
       - name: Package IPA
         run: |
           set -e
-          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "Minis.app" -print -quit)
           echo "APP=$APP"
           test -n "$APP" || { echo "app bundle missing"; exit 1; }
+          echo "----- .app 顶层内容 -----"
+          ls -la "$APP" | head -40
+          test -f "$APP/Info.plist" || { echo "!! Info.plist 不在 .app 内"; exit 1; }
+          EXEC=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist")
+          echo "CFBundleExecutable = $EXEC"
+          test -f "$APP/$EXEC" || { echo "!! 主可执行文件缺失: $EXEC"; exit 1; }
           rm -rf ipa && mkdir -p ipa/Payload
-          cp -R "$APP" ipa/Payload/
+          ditto "$APP" "ipa/Payload/Minis.app"
+          test -f "ipa/Payload/Minis.app/Info.plist" || { echo "!! ditto 复制后 Info.plist 丢失"; exit 1; }
           cd ipa
-          zip -qry ../云Minis原版_V1.ipa Payload
+          ditto -c -k --sequesterRsrc --keepParent Payload ../云Minis原版_V1.ipa
           cd ..
+          echo "----- IPA 内容校验 -----"
+          unzip -l 云Minis原版_V1.ipa | head -12
+          unzip -l 云Minis原版_V1.ipa | grep -E "Payload/Minis.app/(Info.plist|$EXEC)$" || { echo "!! IPA 内缺少关键文件"; exit 1; }
           ls -lh *.ipa
+          tar czf Minis.app.tar.gz -C build/Build/Products/Release-iphoneos Minis.app
+          ls -lh Minis.app.tar.gz
 
       - name: 构建日志留存
         if: always()
@@ -135,5 +147,6 @@ jobs:
           name: minis-cloud-ipa
           path: |
             云Minis原版_V1.ipa
+            Minis.app.tar.gz
             xcbuild.log
           if-no-files-found: warn
