@@ -108,9 +108,9 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            build 2>&1 | tee /tmp/xcbuild.log | tail -80
+            build 2>&1 | tee /tmp/xcbuild.log | tail -200 || true
           set +x
-          test -d build/Build/Products/Release-iphoneos || { echo "NO .app produced"; tail -150 /tmp/xcbuild.log; exit 1; }
+          test -d build/Build/Products/Release-iphoneos || { echo "===== 构建失败，完整日志尾部 ====="; tail -500 /tmp/xcbuild.log; echo "===== 错误行 ====="; grep -n "error:" /tmp/xcbuild.log | head -40; exit 1; }
 
       - name: Package IPA
         run: |
@@ -125,8 +125,15 @@ jobs:
           cd ..
           ls -lh *.ipa
 
+      - name: 构建日志留存
+        if: always()
+        run: cp /tmp/xcbuild.log "$GITHUB_WORKSPACE/xcbuild.log" 2>/dev/null || true
+
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: minis-cloud-ipa
-          path: 云Minis原版_V1.ipa
-          if-no-files-found: error
+          path: |
+            云Minis原版_V1.ipa
+            xcbuild.log
+          if-no-files-found: warn
